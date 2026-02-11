@@ -97,34 +97,55 @@ function formatCountdown(totalMinutes) {
   return `${abs}分`;
 }
 
-function formatCountdownSeconds(targetMinute) {
-  const diffMs = targetMinute * 60000 - Date.now();
-  const abs = Math.abs(diffMs);
-  const totalSeconds = Math.floor(abs / 1000);
+const PRECISION_CYCLE = ["hour", "minute", "second"];
+const PRECISION_LABELS = { hour: "小时", minute: "分钟", second: "秒" };
 
-  if (totalSeconds >= 86400) {
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    return `${days}天${hours}时${String(mins).padStart(2, "0")}分`;
+function formatCompactCountdown(targetMinute, precision) {
+  if (precision === "hour") {
+    const totalMinutes = Math.abs(targetMinute - nowMinute());
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    if (days > 0) {
+      return `${days}天${hours > 0 ? hours + "时" : ""}`;
+    }
+    return `${hours}时`;
   }
 
-  const hours = Math.floor(totalSeconds / 3600);
+  if (precision === "minute") {
+    const totalMinutes = Math.abs(targetMinute - nowMinute());
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const mins = totalMinutes % 60;
+    if (days > 0) {
+      return `${days}天${hours}时${mins > 0 ? mins + "分" : ""}`;
+    }
+    if (hours > 0) {
+      return `${hours}时${String(mins).padStart(2, "0")}分`;
+    }
+    return `${mins}分`;
+  }
+
+  // precision === "second"
+  const diffMs = Math.abs(targetMinute * 60000 - Date.now());
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
 
+  if (days > 0) {
+    return `${days}天${hours}时${String(mins).padStart(2, "0")}分${String(secs).padStart(2, "0")}秒`;
+  }
   if (hours > 0) {
     return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }
   return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
-function remainingLabelSeconds(targetMinute) {
-  const diffMs = targetMinute * 60000 - Date.now();
-  if (diffMs < 0) {
-    return `超时 ${formatCountdownSeconds(targetMinute)}`;
-  }
-  return formatCountdownSeconds(targetMinute);
+function compactRemainingLabel(targetMinute, precision) {
+  const isOverdue = targetMinute * 60000 - Date.now() < 0;
+  const text = formatCompactCountdown(targetMinute, precision);
+  return isOverdue ? `超时 ${text}` : text;
 }
 
 function urgencyClass(remaining) {
@@ -497,11 +518,7 @@ function renderCompactBar() {
 
   if (timer) {
     const remaining = timer.target_at_minute - nowMinute();
-    if (state.compactPrecision === "second") {
-      compactRemaining.textContent = remainingLabelSeconds(timer.target_at_minute);
-    } else {
-      compactRemaining.textContent = remainingLabel(remaining);
-    }
+    compactRemaining.textContent = compactRemainingLabel(timer.target_at_minute, state.compactPrecision);
     compactRemaining.className = remaining < 0 ? "compact-countdown overdue" : "compact-countdown";
   } else {
     compactRemaining.textContent = "选择倒计时";
@@ -602,9 +619,9 @@ $("compact-mark-submit").addEventListener("click", async () => {
 });
 
 $("compact-precision-toggle").addEventListener("click", () => {
-  state.compactPrecision = state.compactPrecision === "minute" ? "second" : "minute";
-  $("compact-precision-toggle").textContent =
-    state.compactPrecision === "second" ? "精确到分" : "精确到秒";
+  const idx = PRECISION_CYCLE.indexOf(state.compactPrecision);
+  state.compactPrecision = PRECISION_CYCLE[(idx + 1) % PRECISION_CYCLE.length];
+  $("compact-precision-toggle").textContent = PRECISION_LABELS[state.compactPrecision];
   localStorage.setItem(COMPACT_PRECISION_KEY, state.compactPrecision);
   renderCompactBar();
 });
@@ -640,10 +657,10 @@ setInterval(() => {
     setCompactMode(compactModeEnabled, false);
 
     const savedPrecision = localStorage.getItem(COMPACT_PRECISION_KEY);
-    if (savedPrecision === "second") {
-      state.compactPrecision = "second";
-      $("compact-precision-toggle").textContent = "精确到分";
+    if (savedPrecision && PRECISION_CYCLE.includes(savedPrecision)) {
+      state.compactPrecision = savedPrecision;
     }
+    $("compact-precision-toggle").textContent = PRECISION_LABELS[state.compactPrecision];
   } catch (_error) {
     // silent init failure
   }
