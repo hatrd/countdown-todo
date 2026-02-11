@@ -19,12 +19,12 @@ cargo test --workspace
 
 ### 2) 启动 Tauri 桌面应用
 ```bash
-cargo run -p src-tauri --features desktop --bin countdown-todo
+cargo run -p src-tauri --features desktop --bin src-tauri
 ```
 
 ### 3) 指定数据目录（可选）
 ```bash
-COUNTDOWN_TODO_DATA_DIR=/path/to/data cargo run -p src-tauri --features desktop --bin countdown-todo
+COUNTDOWN_TODO_DATA_DIR=/path/to/data cargo run -p src-tauri --features desktop --bin src-tauri
 ```
 
 ## Linux 桌面依赖（Tauri/WebKit）

@@ -8,7 +8,7 @@ name = "countdown_todo_core"
 path = "src/lib.rs"
 
 [[bin]]
-name = "countdown-todo"
+name = "src-tauri"
 path = "src/main.rs"
 required-features = ["desktop"]
 
