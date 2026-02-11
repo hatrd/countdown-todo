@@ -118,10 +118,10 @@ function renderTimers() {
         return;
       }
       await invokeEnvelope("timer_update", {
-        timerId: timer.id,
+        timer_id: timer.id,
         name: nextName,
-        targetAtMinute: nextMinute,
-        nowMinute: nowMinute(),
+        target_at_minute: nextMinute,
+        now_minute: nowMinute(),
       });
       await refreshTimers();
       renderAll();
@@ -131,8 +131,8 @@ function renderTimers() {
     archiveButton.textContent = "归档";
     archiveButton.onclick = async () => {
       await invokeEnvelope("timer_archive", {
-        timerId: timer.id,
-        nowMinute: nowMinute(),
+        timer_id: timer.id,
+        now_minute: nowMinute(),
       });
       if (state.selectedTimerId === timer.id) {
         state.selectedTimerId = null;
@@ -194,9 +194,9 @@ function renderTodos() {
     toggle.textContent = todo.status === "done" ? "标记未完成" : "标记完成";
     toggle.onclick = async () => {
       await invokeEnvelope("todo_update_status", {
-        todoId: todo.id,
+        todo_id: todo.id,
         status: todo.status === "done" ? "open" : "done",
-        nowMinute: nowMinute(),
+        now_minute: nowMinute(),
       });
       await refreshMarksAndTodos();
       renderAll();
@@ -226,7 +226,7 @@ function renderAll() {
 
 async function refreshTimers() {
   state.timers = await invokeEnvelope("timer_list", {
-    includeArchived: false,
+    include_archived: false,
   });
 
   if (state.selectedTimerId && !state.timers.some((timer) => timer.id === state.selectedTimerId)) {
@@ -242,10 +242,10 @@ async function refreshMarksAndTodos() {
   }
 
   state.marks = await invokeEnvelope("mark_list_by_timer", {
-    timerId: state.selectedTimerId,
+    timer_id: state.selectedTimerId,
   });
   state.todos = await invokeEnvelope("todo_list_by_timer", {
-    timerId: state.selectedTimerId,
+    timer_id: state.selectedTimerId,
   });
 }
 
@@ -262,8 +262,8 @@ $("timer-form").addEventListener("submit", async (event) => {
 
   await invokeEnvelope("timer_create", {
     name,
-    targetAtMinute: targetMinute,
-    nowMinute: nowMinute(),
+    target_at_minute: targetMinute,
+    now_minute: nowMinute(),
   });
 
   $("timer-form").reset();
@@ -287,9 +287,9 @@ $("todo-form").addEventListener("submit", async (event) => {
   }
 
   await invokeEnvelope("todo_create", {
-    timerId: state.selectedTimerId,
+    timer_id: state.selectedTimerId,
     title,
-    nowMinute: nowMinute(),
+    now_minute: nowMinute(),
   });
 
   $("todo-form").reset();
@@ -306,10 +306,10 @@ $("mark-submit").addEventListener("click", async () => {
 
   const description = $("mark-description").value;
   await invokeEnvelope("mark_create", {
-    timerId: state.selectedTimerId,
-    markedAtMinute: nowMinute(),
+    timer_id: state.selectedTimerId,
+    marked_at_minute: nowMinute(),
     description,
-    todoIds: Array.from(state.insertedTodoIds),
+    todo_ids: Array.from(state.insertedTodoIds),
   });
 
   $("mark-description").value = "";
