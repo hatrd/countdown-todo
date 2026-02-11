@@ -71,6 +71,11 @@ pub struct UpdateTodoStatusCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DeleteTodoCommand {
+    pub todo_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CreateMarkCommand {
     pub timer_id: String,
     pub marked_at_minute: EpochMinutes,
@@ -138,6 +143,13 @@ impl<S: Store> CommandApi<S> {
             .service
             .set_todo_status(&request.todo_id, request.status, request.now_minute)
         {
+            Ok(todo) => Envelope::success(todo),
+            Err(error) => Envelope::failure(error),
+        }
+    }
+
+    pub fn todo_delete(&mut self, request: DeleteTodoCommand) -> Envelope<Todo> {
+        match self.service.delete_todo(&request.todo_id) {
             Ok(todo) => Envelope::success(todo),
             Err(error) => Envelope::failure(error),
         }
@@ -211,6 +223,7 @@ fn map_error(error: AppError) -> CommandError {
 mod tests {
     use crate::command::{
         ArchiveTimerCommand, CommandApi, CreateMarkCommand, CreateTimerCommand, CreateTodoCommand,
+        DeleteTodoCommand,
     };
     use crate::repository::InMemoryStore;
     use crate::service::AppService;
@@ -290,5 +303,33 @@ mod tests {
             now_minute: 120,
         });
         assert!(archive_response.ok);
+    }
+
+    #[test]
+    fn tests_deletes_todo_successfully() {
+        let service = AppService::new(InMemoryStore::default());
+        let mut command_api = CommandApi::new(service);
+
+        let timer = command_api
+            .timer_create(CreateTimerCommand {
+                name: "flow".to_string(),
+                target_at_minute: 500,
+                now_minute: 100,
+            })
+            .data
+            .expect("timer should exist");
+
+        let todo = command_api
+            .todo_create(CreateTodoCommand {
+                timer_id: timer.id,
+                title: "delete me".to_string(),
+                now_minute: 110,
+            })
+            .data
+            .expect("todo should exist");
+
+        let delete_response = command_api.todo_delete(DeleteTodoCommand { todo_id: todo.id });
+        assert!(delete_response.ok);
+        assert!(delete_response.error.is_none());
     }
 }

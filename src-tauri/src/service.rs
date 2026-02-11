@@ -160,6 +160,16 @@ impl<S: Store> AppService<S> {
         Ok(todo)
     }
 
+    pub fn delete_todo(&mut self, todo_id: &str) -> AppResult<Todo> {
+        let todo = self
+            .store
+            .get_todo(todo_id)
+            .ok_or_else(|| AppError::NotFound(format!("todo {todo_id}")))?;
+
+        self.store.delete_todo(todo_id)?;
+        Ok(todo)
+    }
+
     pub fn list_todos_by_timer(&self, timer_id: &str) -> AppResult<Vec<Todo>> {
         self.ensure_timer_exists(timer_id)?;
         Ok(self.store.list_todos_by_timer(timer_id))
@@ -279,5 +289,27 @@ mod tests {
             .create_mark("missing-timer", 100, "ignored", vec![])
             .expect_err("mark should fail");
         assert!(error.to_string().contains("missing-timer"));
+    }
+
+    #[test]
+    fn deletes_todo_and_removes_from_list() {
+        let mut service = AppService::new(InMemoryStore::default());
+        let timer = service
+            .create_timer("project", 500, 100)
+            .expect("timer should be created");
+
+        let todo = service
+            .create_todo(&timer.id, "cleanup", 110)
+            .expect("todo should be created");
+
+        let deleted = service
+            .delete_todo(&todo.id)
+            .expect("todo should be deleted");
+        assert_eq!(deleted.id, todo.id);
+
+        let todos = service
+            .list_todos_by_timer(&timer.id)
+            .expect("todos should list");
+        assert!(todos.is_empty());
     }
 }

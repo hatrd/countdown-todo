@@ -19,6 +19,7 @@ pub trait Store {
 
     fn save_todo(&mut self, todo: Todo) -> AppResult<()>;
     fn get_todo(&self, todo_id: &str) -> Option<Todo>;
+    fn delete_todo(&mut self, todo_id: &str) -> AppResult<()>;
     fn list_todos_by_timer(&self, timer_id: &str) -> Vec<Todo>;
 
     fn append_mark(&mut self, mark: Mark) -> AppResult<()>;
@@ -60,6 +61,13 @@ impl Store for InMemoryStore {
 
     fn get_todo(&self, todo_id: &str) -> Option<Todo> {
         self.todos.get(todo_id).cloned()
+    }
+
+    fn delete_todo(&mut self, todo_id: &str) -> AppResult<()> {
+        self.todos
+            .remove(todo_id)
+            .map(|_| ())
+            .ok_or_else(|| AppError::NotFound(format!("todo {todo_id}")))
     }
 
     fn list_todos_by_timer(&self, timer_id: &str) -> Vec<Todo> {
@@ -240,6 +248,14 @@ impl Store for CsvStore {
 
     fn get_todo(&self, todo_id: &str) -> Option<Todo> {
         self.todos.get(todo_id).cloned()
+    }
+
+    fn delete_todo(&mut self, todo_id: &str) -> AppResult<()> {
+        self.todos
+            .remove(todo_id)
+            .map(|_| ())
+            .ok_or_else(|| AppError::NotFound(format!("todo {todo_id}")))?;
+        self.persist_todos()
     }
 
     fn list_todos_by_timer(&self, timer_id: &str) -> Vec<Todo> {
@@ -557,7 +573,7 @@ mod persistence {
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use crate::repository::{CsvStore, MARKS_HEADER, Store, TIMERS_HEADER, TODOS_HEADER};
+    use crate::repository::{CsvStore, Store, MARKS_HEADER, TIMERS_HEADER, TODOS_HEADER};
     use crate::service::AppService;
 
     fn unique_temp_dir(prefix: &str) -> PathBuf {
@@ -654,6 +670,39 @@ mod persistence {
             .expect("marks should load");
         assert_eq!(marks.len(), 1);
         assert_eq!(marks[0].description, "- a\n- a\n- a");
+    }
+
+    #[test]
+    fn tests_persists_todo_delete_after_store_reopen() {
+        let root = unique_temp_dir("delete-todo");
+        let timer_id;
+        let todo_id;
+
+        {
+            let store = CsvStore::new(&root).expect("csv store should be created");
+            let mut service = AppService::new(store);
+            let timer = service
+                .create_timer("cleanup", 300, 100)
+                .expect("timer should be created");
+            let todo = service
+                .create_todo(&timer.id, "obsolete", 110)
+                .expect("todo should be created");
+
+            timer_id = timer.id;
+            todo_id = todo.id.clone();
+
+            service
+                .delete_todo(&todo_id)
+                .expect("todo should be deleted");
+        }
+
+        let reopened_store = CsvStore::new(&root).expect("csv store should reopen");
+        let reopened_service = AppService::new(reopened_store);
+        let todos = reopened_service
+            .list_todos_by_timer(&timer_id)
+            .expect("todos should load");
+
+        assert!(todos.is_empty());
     }
 
     #[test]

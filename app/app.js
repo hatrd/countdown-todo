@@ -24,6 +24,7 @@ const timerListNode = $("timer-list");
 const selectedTimerNode = $("selected-timer");
 const markListNode = $("mark-list");
 const todoListNode = $("todo-list");
+const compactTodoSelect = $("compact-todo-select");
 const compactTimerSelect = $("compact-timer-select");
 const compactRemaining = $("compact-remaining");
 const toggleCompactButton = $("toggle-compact");
@@ -264,6 +265,12 @@ async function createTodo(title) {
   });
 }
 
+async function deleteTodo(todoId) {
+  await invokeEnvelope("todo_delete", {
+    todo_id: todoId,
+  });
+}
+
 function insertOpenTodosToDescription(textarea, todoIdSet) {
   const openTodos = state.todos.filter((todo) => todo.status !== "done");
   if (openTodos.length === 0) {
@@ -483,10 +490,51 @@ function renderTodos() {
       actions.append(insert);
     }
 
+    const remove = document.createElement("button");
+    remove.className = "btn-danger btn-sm";
+    remove.textContent = "删除";
+    remove.onclick = async () => {
+      await deleteTodo(todo.id);
+      state.insertedTodoIds.delete(todo.id);
+      state.compactInsertedTodoIds.delete(todo.id);
+      await refreshMarksAndTodos();
+      renderAll();
+      showToast("已删除待办");
+    };
+    actions.append(remove);
+
     content.append(title, actions);
     card.append(checkbox, content);
     li.append(card);
     todoListNode.append(li);
+  }
+}
+
+function renderCompactTodoSelect() {
+  compactTodoSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "从 todo list 选择填入...";
+  compactTodoSelect.append(placeholder);
+
+  if (!state.selectedTimerId) {
+    compactTodoSelect.disabled = true;
+    return;
+  }
+
+  const openTodos = state.todos.filter((todo) => todo.status !== "done");
+  if (openTodos.length === 0) {
+    compactTodoSelect.disabled = true;
+    return;
+  }
+
+  compactTodoSelect.disabled = false;
+  for (const todo of openTodos) {
+    const option = document.createElement("option");
+    option.value = todo.id;
+    option.textContent = todo.title;
+    compactTodoSelect.append(option);
   }
 }
 
@@ -530,6 +578,7 @@ function renderAll() {
   renderTimers();
   renderMarks();
   renderTodos();
+  renderCompactTodoSelect();
   renderCompactBar();
 }
 
@@ -609,10 +658,30 @@ $("mark-submit").addEventListener("click", async () => {
   showToast("已打卡");
 });
 
+compactTodoSelect.addEventListener("change", (event) => {
+  const selectedId = event.target.value;
+  if (!selectedId) {
+    return;
+  }
+
+  const todo = state.todos.find((item) => item.id === selectedId);
+  if (!todo) {
+    return;
+  }
+
+  const textarea = $("compact-mark-input");
+  const prefix = textarea.value.trim().length > 0 ? "\n" : "";
+  textarea.value += `${prefix}- ${todo.title}`;
+  state.compactInsertedTodoIds.add(todo.id);
+  compactTodoSelect.value = "";
+  showToast("已填入待办");
+});
+
 $("compact-mark-submit").addEventListener("click", async () => {
   const description = $("compact-mark-input").value;
-  await createMark(description, []);
+  await createMark(description, Array.from(state.compactInsertedTodoIds));
   $("compact-mark-input").value = "";
+  state.compactInsertedTodoIds.clear();
   await refreshMarksAndTodos();
   renderAll();
   showToast("已打卡");

@@ -129,6 +129,16 @@ button {
   font-size: 0.78rem;
 }
 
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.btn-danger:hover {
+  background: var(--red);
+  color: #fff;
+}
+
 .btn-mark {
   width: 100%;
   padding: 10px;
@@ -508,6 +518,14 @@ textarea {
 
 .compact-mark-row {
   grid-template-columns: 1fr auto;
+}
+
+.compact-todo-row {
+  grid-template-columns: 1fr;
+}
+
+#compact-todo-select {
+  width: 100%;
 }
 
 .pill {

@@ -5,7 +5,7 @@ use tauri::Manager;
 
 use countdown_todo_core::command::{
     ArchiveTimerCommand, CommandApi, CreateMarkCommand, CreateTimerCommand, CreateTodoCommand,
-    Envelope, UpdateTimerCommand, UpdateTodoStatusCommand,
+    DeleteTodoCommand, Envelope, UpdateTimerCommand, UpdateTodoStatusCommand,
 };
 use countdown_todo_core::model::{Mark, Timer, Todo, TodoStatus};
 use countdown_todo_core::repository::CsvStore;
@@ -118,6 +118,11 @@ fn todo_update_status(
 }
 
 #[tauri::command]
+fn todo_delete(state: tauri::State<'_, DesktopState>, todo_id: String) -> Envelope<Todo> {
+    state.api.lock().todo_delete(DeleteTodoCommand { todo_id })
+}
+
+#[tauri::command]
 fn mark_create(
     state: tauri::State<'_, DesktopState>,
     timer_id: String,
@@ -203,6 +208,7 @@ pub fn run() {
             todo_create,
             todo_list_by_timer,
             todo_update_status,
+            todo_delete,
             mark_create,
             mark_list_by_timer,
             open_data_dir
