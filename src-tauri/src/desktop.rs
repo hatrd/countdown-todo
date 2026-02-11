@@ -13,6 +13,7 @@ use countdown_todo_core::service::AppService;
 
 struct DesktopState {
     api: Mutex<CommandApi<CsvStore>>,
+    data_dir: PathBuf,
 }
 
 #[tauri::command]
@@ -140,6 +141,30 @@ fn mark_list_by_timer(
     state.api.lock().mark_list_by_timer(&timer_id)
 }
 
+#[tauri::command]
+fn open_data_dir(
+    state: tauri::State<'_, DesktopState>,
+    app_handle: tauri::AppHandle,
+) -> Envelope<String> {
+    let path_str = state.data_dir.display().to_string();
+    match tauri::api::shell::open(&app_handle.shell_scope(), &path_str, None) {
+        Ok(()) => Envelope {
+            ok: true,
+            data: Some(path_str),
+            error: None,
+        },
+        Err(error) => Envelope {
+            ok: false,
+            data: None,
+            error: Some(countdown_todo_core::command::CommandError {
+                code: "E_SHELL",
+                message: format!("无法打开目录: {error}"),
+                detail: None,
+            }),
+        },
+    }
+}
+
 fn resolve_data_dir(app_handle: &tauri::AppHandle) -> PathBuf {
     if let Some(custom_path) = std::env::var_os("COUNTDOWN_TODO_DATA_DIR") {
         return PathBuf::from(custom_path);
@@ -165,6 +190,7 @@ pub fn run() {
 
             app.manage(DesktopState {
                 api: Mutex::new(api),
+                data_dir,
             });
 
             Ok(())
@@ -178,7 +204,8 @@ pub fn run() {
             todo_list_by_timer,
             todo_update_status,
             mark_create,
-            mark_list_by_timer
+            mark_list_by_timer,
+            open_data_dir
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Countdown Todo desktop app");

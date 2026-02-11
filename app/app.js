@@ -639,6 +639,14 @@ toggleCompactButton.addEventListener("click", () => {
   setCompactMode(!state.compactMode);
 });
 
+$("open-data-dir").addEventListener("click", async () => {
+  try {
+    await invokeEnvelope("open_data_dir");
+  } catch (_error) {
+    // already handled in invokeEnvelope
+  }
+});
+
 setInterval(() => {
   if (state.timers.length > 0) {
     renderTimers();
