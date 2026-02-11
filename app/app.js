@@ -12,9 +12,11 @@ const state = {
   insertedTodoIds: new Set(),
   compactInsertedTodoIds: new Set(),
   compactMode: false,
+  compactPrecision: "minute", // "minute" or "second"
 };
 
 const COMPACT_MODE_KEY = "countdown_todo_compact_mode";
+const COMPACT_PRECISION_KEY = "countdown_todo_compact_precision";
 
 const $ = (id) => document.getElementById(id);
 
@@ -93,6 +95,36 @@ function formatCountdown(totalMinutes) {
     return `${hours}:${String(minutes).padStart(2, "0")}`;
   }
   return `${abs}分`;
+}
+
+function formatCountdownSeconds(targetMinute) {
+  const diffMs = targetMinute * 60000 - Date.now();
+  const abs = Math.abs(diffMs);
+  const totalSeconds = Math.floor(abs / 1000);
+
+  if (totalSeconds >= 86400) {
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    return `${days}天${hours}时${String(mins).padStart(2, "0")}分`;
+  }
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function remainingLabelSeconds(targetMinute) {
+  const diffMs = targetMinute * 60000 - Date.now();
+  if (diffMs < 0) {
+    return `超时 ${formatCountdownSeconds(targetMinute)}`;
+  }
+  return formatCountdownSeconds(targetMinute);
 }
 
 function urgencyClass(remaining) {
@@ -448,7 +480,7 @@ function renderCompactBar() {
     compactTimerSelect.append(option);
     compactTimerSelect.disabled = true;
     compactRemaining.textContent = "创建一个倒计时开始";
-    compactRemaining.className = "pill";
+    compactRemaining.className = "compact-countdown no-timer";
     return;
   }
 
@@ -465,11 +497,15 @@ function renderCompactBar() {
 
   if (timer) {
     const remaining = timer.target_at_minute - nowMinute();
-    compactRemaining.textContent = remainingLabel(remaining);
-    compactRemaining.className = remaining < 0 ? "pill pill-overdue" : "pill";
+    if (state.compactPrecision === "second") {
+      compactRemaining.textContent = remainingLabelSeconds(timer.target_at_minute);
+    } else {
+      compactRemaining.textContent = remainingLabel(remaining);
+    }
+    compactRemaining.className = remaining < 0 ? "compact-countdown overdue" : "compact-countdown";
   } else {
     compactRemaining.textContent = "选择倒计时";
-    compactRemaining.className = "pill";
+    compactRemaining.className = "compact-countdown no-timer";
   }
 }
 
@@ -556,28 +592,21 @@ $("mark-submit").addEventListener("click", async () => {
   showToast("已打卡");
 });
 
-$("compact-insert-open-todos").addEventListener("click", () => {
-  const textarea = $("compact-mark-input");
-  insertOpenTodosToDescription(textarea, state.compactInsertedTodoIds);
-});
-
 $("compact-mark-submit").addEventListener("click", async () => {
   const description = $("compact-mark-input").value;
-  await createMark(description, Array.from(state.compactInsertedTodoIds));
+  await createMark(description, []);
   $("compact-mark-input").value = "";
-  state.compactInsertedTodoIds.clear();
   await refreshMarksAndTodos();
   renderAll();
   showToast("已打卡");
 });
 
-$("compact-todo-submit").addEventListener("click", async () => {
-  const input = $("compact-todo-input");
-  const title = input.value.trim();
-  await createTodo(title);
-  input.value = "";
-  await refreshMarksAndTodos();
-  renderAll();
+$("compact-precision-toggle").addEventListener("click", () => {
+  state.compactPrecision = state.compactPrecision === "minute" ? "second" : "minute";
+  $("compact-precision-toggle").textContent =
+    state.compactPrecision === "second" ? "精确到分" : "精确到秒";
+  localStorage.setItem(COMPACT_PRECISION_KEY, state.compactPrecision);
+  renderCompactBar();
 });
 
 compactTimerSelect.addEventListener("change", async (event) => {
@@ -591,10 +620,6 @@ compactTimerSelect.addEventListener("change", async (event) => {
 
 toggleCompactButton.addEventListener("click", () => {
   setCompactMode(!state.compactMode);
-});
-
-$("compact-exit").addEventListener("click", () => {
-  setCompactMode(false);
 });
 
 setInterval(() => {
@@ -613,6 +638,12 @@ setInterval(() => {
 
     const compactModeEnabled = localStorage.getItem(COMPACT_MODE_KEY) === "1";
     setCompactMode(compactModeEnabled, false);
+
+    const savedPrecision = localStorage.getItem(COMPACT_PRECISION_KEY);
+    if (savedPrecision === "second") {
+      state.compactPrecision = "second";
+      $("compact-precision-toggle").textContent = "精确到分";
+    }
   } catch (_error) {
     // silent init failure
   }

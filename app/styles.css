@@ -163,6 +163,11 @@ textarea {
   resize: vertical;
 }
 
+#mark-description {
+  width: 100%;
+  min-height: 180px;
+}
+
 /* ─── Layout ─── */
 .layout {
   display: grid;
@@ -461,8 +466,37 @@ textarea {
   display: none;
   border-bottom: 1px solid var(--border);
   padding: 10px;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-panel);
+}
+
+.compact-header-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.compact-countdown {
+  font-size: 2.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  padding: 6px 0;
+  line-height: 1.2;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.compact-countdown.overdue {
+  color: var(--red);
+  animation: pulse-urgency 1.5s ease-in-out infinite;
+}
+
+.compact-countdown.no-timer {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .compact-row {
@@ -473,7 +507,7 @@ textarea {
 }
 
 .compact-mark-row {
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
 }
 
 .pill {
@@ -525,6 +559,10 @@ body.compact-mode .compact-bar {
 
   .panel:last-child {
     border-bottom: none;
+  }
+
+  .compact-header-row {
+    grid-template-columns: 1fr auto;
   }
 
   .compact-row,

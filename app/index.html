@@ -16,19 +16,14 @@
     </header>
 
     <section id="compact-bar" class="compact-bar" aria-label="便签快捷栏">
-      <div class="compact-row">
+      <div class="compact-row compact-header-row">
         <select id="compact-timer-select"></select>
-        <span id="compact-remaining" class="pill">选择倒计时</span>
-        <button id="compact-exit" class="btn-ghost">退出便签</button>
+        <button id="compact-precision-toggle" class="btn-ghost btn-sm">精确到秒</button>
       </div>
+      <div id="compact-remaining" class="compact-countdown">选择倒计时</div>
       <div class="compact-row compact-mark-row">
         <textarea id="compact-mark-input" rows="3" placeholder="这段时间做了什么..."></textarea>
-        <button id="compact-insert-open-todos" class="btn-secondary">插入待办</button>
         <button id="compact-mark-submit" class="btn-primary">打卡</button>
-      </div>
-      <div class="compact-row">
-        <input id="compact-todo-input" placeholder="添加待办事项" />
-        <button id="compact-todo-submit" class="btn-secondary">+ 待办</button>
       </div>
     </section>
 
@@ -46,7 +41,7 @@
       <section class="panel panel-mark">
         <h2>打卡记录</h2>
         <div id="selected-timer" class="current-timer-badge">选择一个倒计时开始</div>
-        <textarea id="mark-description" rows="5" placeholder="记录这段时间做了什么..."></textarea>
+        <textarea id="mark-description" rows="10" placeholder="记录这段时间做了什么..."></textarea>
         <button id="mark-submit" class="btn-primary btn-mark">打卡</button>
         <h3>历史</h3>
         <ul id="mark-list" class="list"></ul>
