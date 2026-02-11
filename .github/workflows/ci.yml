@@ -49,11 +49,27 @@ jobs:
             target/**/bundle/msi/*.msi
           if-no-files-found: warn
 
+      - name: Collect portable EXE
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path target -Recurse -Filter src-tauri.exe |
+            Where-Object { $_.FullName -match "[\\/]release[\\/]src-tauri\.exe$" } |
+            Select-Object -First 1
+
+          if (-not $exe) {
+            Write-Error "Portable EXE not found under target/**/release/src-tauri.exe"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item $exe.FullName dist/countdown-todo-portable.exe -Force
+          Write-Host "Portable EXE: $($exe.FullName)"
+
       - name: Upload portable EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: countdown-todo-portable-exe
-          path: target/x86_64-pc-windows-msvc/release/src-tauri.exe
+          path: dist/countdown-todo-portable.exe
           if-no-files-found: error
 
   release-portable-exe:
@@ -69,9 +85,6 @@ jobs:
         with:
           name: countdown-todo-portable-exe
           path: dist
-
-      - name: Rename executable
-        run: mv dist/src-tauri.exe dist/countdown-todo-portable.exe
 
       - name: Publish GitHub release asset
         uses: softprops/action-gh-release@v2
