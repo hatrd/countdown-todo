@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Countdown Todo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Countdown Todo</h1>
+      <p>跨平台倒计时 + Mark + Todo（CSV 持久化）</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>Timers</h2>
+        <form id="timer-form" class="stack">
+          <input id="timer-name" placeholder="Timer 名称" required />
+          <input id="timer-target" type="datetime-local" required />
+          <button type="submit">新增 Timer</button>
+        </form>
+
+        <ul id="timer-list" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Mark</h2>
+        <div id="selected-timer" class="hint">请选择一个 Timer</div>
+        <textarea id="mark-description" rows="6" placeholder="记录这段时间做了什么..."></textarea>
+        <button id="mark-submit">Mark Now</button>
+        <h3>Mark 历史</h3>
+        <ul id="mark-list" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Todos</h2>
+        <form id="todo-form" class="stack">
+          <input id="todo-title" placeholder="Todo 内容" />
+          <button type="submit">新增 Todo</button>
+        </form>
+        <ul id="todo-list" class="list"></ul>
+      </section>
+    </main>
+
+    <footer>
+      <span id="status">Ready</span>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

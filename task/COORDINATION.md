@@ -11,10 +11,10 @@
 - Agent D: 验收设计、联调清单、回归门禁
 
 ## 当前状态
-- Agent A: IN_PROGRESS
-- Agent B: IN_PROGRESS
-- Agent C: IN_PROGRESS
-- Agent D: IN_PROGRESS
+- Agent A: DONE
+- Agent B: DONE
+- Agent C: DONE
+- Agent D: DONE
 
 ## 风险同步
 1. `mark` 跨重启连续性是硬约束，所有实现不得破坏 `prev_marked_at` 链条。

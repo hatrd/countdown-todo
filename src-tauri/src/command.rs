@@ -1,14 +1,16 @@
+use serde::Serialize;
+
 use crate::model::{EpochMinutes, Mark, Timer, Todo, TodoStatus};
 use crate::{AppError, AppService, Store};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CommandError {
     pub code: &'static str,
     pub message: String,
     pub detail: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Envelope<T> {
     pub ok: bool,
     pub data: Option<T>,
@@ -33,14 +35,14 @@ impl<T> Envelope<T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CreateTimerCommand {
     pub name: String,
     pub target_at_minute: EpochMinutes,
     pub now_minute: EpochMinutes,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct UpdateTimerCommand {
     pub timer_id: String,
     pub name: String,
@@ -48,27 +50,27 @@ pub struct UpdateTimerCommand {
     pub now_minute: EpochMinutes,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ArchiveTimerCommand {
     pub timer_id: String,
     pub now_minute: EpochMinutes,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CreateTodoCommand {
     pub timer_id: String,
     pub title: String,
     pub now_minute: EpochMinutes,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct UpdateTodoStatusCommand {
     pub todo_id: String,
     pub status: TodoStatus,
     pub now_minute: EpochMinutes,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CreateMarkCommand {
     pub timer_id: String,
     pub marked_at_minute: EpochMinutes,

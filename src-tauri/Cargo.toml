@@ -3,4 +3,23 @@ name = "src-tauri"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "countdown_todo_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "countdown-todo"
+path = "src/main.rs"
+required-features = ["desktop"]
+
+[features]
+default = []
+desktop = ["dep:tauri", "dep:parking_lot", "dep:tauri-build"]
+
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+parking_lot = { version = "0.12", optional = true }
+tauri = { version = "1", optional = true, features = ["api-all"] }
+
+[build-dependencies]
+tauri-build = { version = "1", optional = true }

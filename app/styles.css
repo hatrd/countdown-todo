@@ -1,0 +1,104 @@
+:root {
+  color-scheme: light dark;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.app-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid #8883;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.app-header p {
+  margin: 6px 0 0;
+  opacity: 0.75;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+}
+
+.panel {
+  border: 1px solid #8883;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 70vh;
+}
+
+.stack {
+  display: grid;
+  gap: 8px;
+}
+
+input,
+textarea,
+button,
+select {
+  font: inherit;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #9996;
+}
+
+button {
+  cursor: pointer;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.list li {
+  border: 1px solid #8883;
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.timer-card.active {
+  outline: 2px solid #5f9dff;
+}
+
+.timer-meta,
+.todo-actions,
+.timer-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+footer {
+  border-top: 1px solid #8883;
+  padding: 10px 12px;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    min-height: auto;
+  }
+}

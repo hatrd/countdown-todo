@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 pub type EpochMinutes = i64;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Timer {
     pub id: String,
     pub name: String,
@@ -16,7 +18,7 @@ impl Timer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Mark {
     pub id: String,
     pub timer_id: String,
@@ -27,7 +29,8 @@ pub struct Mark {
     pub todo_ids: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TodoStatus {
     Open,
     Done,
@@ -50,7 +53,7 @@ impl TodoStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Todo {
     pub id: String,
     pub timer_id: String,

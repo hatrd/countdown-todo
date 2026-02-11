@@ -1,6 +1,6 @@
 # T06 - Todo 管理与 Mark 联动
 
-- 状态：TODO
+- 状态：DONE
 - 负责人：Agent C
 - 依赖：T03, T04
 
