@@ -385,8 +385,8 @@ fn load_csv_rows(path: &Path, expected_header: &str) -> AppResult<Vec<Vec<String
         .and_then(|mut file| file.read_to_string(&mut content))
         .map_err(|error| AppError::Internal(format!("failed to read {path:?}: {error}")))?;
 
-    let mut lines = content.lines();
-    let header = lines.next().unwrap_or_default().trim_end_matches('\r');
+    let mut records = split_csv_records(&content)?.into_iter();
+    let header = records.next().unwrap_or_default();
     if header != expected_header {
         return Err(AppError::Internal(format!(
             "csv header mismatch for {path:?}, expected '{expected_header}', got '{header}'"
@@ -394,15 +394,55 @@ fn load_csv_rows(path: &Path, expected_header: &str) -> AppResult<Vec<Vec<String
     }
 
     let mut rows = Vec::new();
-    for line in lines {
-        let line = line.trim_end_matches('\r');
-        if line.is_empty() {
+    for record in records {
+        if record.is_empty() {
             continue;
         }
-        rows.push(parse_csv_line(line)?);
+        rows.push(parse_csv_line(&record)?);
     }
 
     Ok(rows)
+}
+
+fn split_csv_records(content: &str) -> AppResult<Vec<String>> {
+    let mut records = Vec::new();
+    let mut current = String::new();
+    let mut chars = content.chars().peekable();
+    let mut in_quotes = false;
+
+    while let Some(character) = chars.next() {
+        match character {
+            '"' => {
+                current.push(character);
+                if in_quotes {
+                    if matches!(chars.peek(), Some('"')) {
+                        current.push('"');
+                        let _ = chars.next();
+                    } else {
+                        in_quotes = false;
+                    }
+                } else {
+                    in_quotes = true;
+                }
+            }
+            '\n' if !in_quotes => {
+                let record = current.trim_end_matches('\r').to_string();
+                records.push(record);
+                current.clear();
+            }
+            _ => current.push(character),
+        }
+    }
+
+    if in_quotes {
+        return Err(AppError::Internal("unclosed quote in csv line".to_string()));
+    }
+
+    if !current.is_empty() {
+        records.push(current.trim_end_matches('\r').to_string());
+    }
+
+    Ok(records)
 }
 
 fn parse_csv_line(line: &str) -> AppResult<Vec<String>> {
@@ -587,6 +627,33 @@ mod persistence {
             .expect("marks should load");
         assert_eq!(marks.len(), 1);
         assert_eq!(marks[0].description, "first pass");
+    }
+
+    #[test]
+    fn tests_reloads_multiline_mark_description_after_store_reopen() {
+        let root = unique_temp_dir("reload-multiline");
+
+        {
+            let store = CsvStore::new(&root).expect("csv store should be created");
+            let mut service = AppService::new(store);
+            let timer = service
+                .create_timer("reloadable", 300, 100)
+                .expect("timer should be created");
+            service
+                .create_mark(&timer.id, 140, "- a\n- a\n- a", vec![])
+                .expect("mark should be created");
+        }
+
+        let reopened_store = CsvStore::new(&root).expect("csv store should reopen");
+        let reopened_service = AppService::new(reopened_store);
+        let timers = reopened_service.list_timers(false);
+
+        assert_eq!(timers.len(), 1);
+        let marks = reopened_service
+            .list_marks_by_timer(&timers[0].id)
+            .expect("marks should load");
+        assert_eq!(marks.len(), 1);
+        assert_eq!(marks[0].description, "- a\n- a\n- a");
     }
 
     #[test]
