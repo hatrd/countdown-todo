@@ -480,11 +480,12 @@ textarea {
   background: var(--bg-panel);
 }
 
-.compact-header-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
+#compact-precision-toggle {
+  display: none;
+}
+
+body.compact-mode #compact-precision-toggle {
+  display: inline-block;
 }
 
 .compact-countdown {
@@ -517,15 +518,11 @@ textarea {
 }
 
 .compact-mark-row {
-  grid-template-columns: 1fr auto;
-}
-
-.compact-todo-row {
-  grid-template-columns: 1fr;
+  grid-template-columns: auto 1fr auto;
 }
 
 #compact-todo-select {
-  width: 100%;
+  max-width: 160px;
 }
 
 .pill {
@@ -577,10 +574,6 @@ body.compact-mode .compact-bar {
 
   .panel:last-child {
     border-bottom: none;
-  }
-
-  .compact-header-row {
-    grid-template-columns: 1fr auto;
   }
 
   .compact-row,

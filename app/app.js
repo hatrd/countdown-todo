@@ -25,7 +25,6 @@ const selectedTimerNode = $("selected-timer");
 const markListNode = $("mark-list");
 const todoListNode = $("todo-list");
 const compactTodoSelect = $("compact-todo-select");
-const compactTimerSelect = $("compact-timer-select");
 const compactRemaining = $("compact-remaining");
 const toggleCompactButton = $("toggle-compact");
 const toastNode = $("toast");
@@ -540,38 +539,16 @@ function renderCompactTodoSelect() {
 
 function renderCompactBar() {
   const timer = selectedTimer();
-  compactTimerSelect.innerHTML = "";
 
-  if (state.timers.length === 0) {
-    const option = document.createElement("option");
-    option.textContent = "暂无倒计时";
-    option.value = "";
-    compactTimerSelect.append(option);
-    compactTimerSelect.disabled = true;
-    compactRemaining.textContent = "创建一个倒计时开始";
+  if (!timer) {
+    compactRemaining.textContent = state.timers.length === 0 ? "创建一个倒计时开始" : "选择倒计时";
     compactRemaining.className = "compact-countdown no-timer";
     return;
   }
 
-  compactTimerSelect.disabled = false;
-  for (const timerItem of state.timers) {
-    const option = document.createElement("option");
-    option.value = timerItem.id;
-    option.textContent = timerItem.name;
-    if (timerItem.id === state.selectedTimerId) {
-      option.selected = true;
-    }
-    compactTimerSelect.append(option);
-  }
-
-  if (timer) {
-    const remaining = timer.target_at_minute - nowMinute();
-    compactRemaining.textContent = compactRemainingLabel(timer.target_at_minute, state.compactPrecision);
-    compactRemaining.className = remaining < 0 ? "compact-countdown overdue" : "compact-countdown";
-  } else {
-    compactRemaining.textContent = "选择倒计时";
-    compactRemaining.className = "compact-countdown no-timer";
-  }
+  const remaining = timer.target_at_minute - nowMinute();
+  compactRemaining.textContent = compactRemainingLabel(timer.target_at_minute, state.compactPrecision);
+  compactRemaining.className = remaining < 0 ? "compact-countdown overdue" : "compact-countdown";
 }
 
 function renderAll() {
@@ -693,15 +670,6 @@ $("compact-precision-toggle").addEventListener("click", () => {
   $("compact-precision-toggle").textContent = PRECISION_LABELS[state.compactPrecision];
   localStorage.setItem(COMPACT_PRECISION_KEY, state.compactPrecision);
   renderCompactBar();
-});
-
-compactTimerSelect.addEventListener("change", async (event) => {
-  const nextId = event.target.value;
-  state.selectedTimerId = nextId || null;
-  state.insertedTodoIds.clear();
-  state.compactInsertedTodoIds.clear();
-  await refreshMarksAndTodos();
-  renderAll();
 });
 
 toggleCompactButton.addEventListener("click", () => {
