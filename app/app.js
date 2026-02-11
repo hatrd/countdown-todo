@@ -24,7 +24,8 @@ const timerListNode = $("timer-list");
 const selectedTimerNode = $("selected-timer");
 const markListNode = $("mark-list");
 const todoListNode = $("todo-list");
-const compactTodoSelect = $("compact-todo-select");
+const compactTodoToggle = $("compact-todo-toggle");
+const compactTodoDropdown = $("compact-todo-dropdown");
 const compactRemaining = $("compact-remaining");
 const toggleCompactButton = $("toggle-compact");
 const toastNode = $("toast");
@@ -509,31 +510,36 @@ function renderTodos() {
   }
 }
 
-function renderCompactTodoSelect() {
-  compactTodoSelect.innerHTML = "";
+function renderCompactTodoDropdown() {
+  compactTodoDropdown.innerHTML = "";
 
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "从 todo list 选择填入...";
-  compactTodoSelect.append(placeholder);
+  const openTodos = state.selectedTimerId
+    ? state.todos.filter((todo) => todo.status !== "done")
+    : [];
 
-  if (!state.selectedTimerId) {
-    compactTodoSelect.disabled = true;
-    return;
-  }
-
-  const openTodos = state.todos.filter((todo) => todo.status !== "done");
   if (openTodos.length === 0) {
-    compactTodoSelect.disabled = true;
+    const empty = document.createElement("li");
+    empty.className = "combobox-empty";
+    empty.textContent = state.selectedTimerId ? "暂无待办" : "请先选择倒计时";
+    compactTodoDropdown.append(empty);
+    compactTodoToggle.disabled = true;
     return;
   }
 
-  compactTodoSelect.disabled = false;
+  compactTodoToggle.disabled = false;
   for (const todo of openTodos) {
-    const option = document.createElement("option");
-    option.value = todo.id;
-    option.textContent = todo.title;
-    compactTodoSelect.append(option);
+    const li = document.createElement("li");
+    li.textContent = todo.title;
+    li.dataset.todoId = todo.id;
+    li.addEventListener("click", () => {
+      const textarea = $("compact-mark-input");
+      const prefix = textarea.value.trim().length > 0 ? "\n" : "";
+      textarea.value += `${prefix}- ${todo.title}`;
+      state.compactInsertedTodoIds.add(todo.id);
+      closeCompactTodoDropdown();
+      showToast("已填入待办");
+    });
+    compactTodoDropdown.append(li);
   }
 }
 
@@ -555,7 +561,7 @@ function renderAll() {
   renderTimers();
   renderMarks();
   renderTodos();
-  renderCompactTodoSelect();
+  renderCompactTodoDropdown();
   renderCompactBar();
 }
 
@@ -635,23 +641,25 @@ $("mark-submit").addEventListener("click", async () => {
   showToast("已打卡");
 });
 
-compactTodoSelect.addEventListener("change", (event) => {
-  const selectedId = event.target.value;
-  if (!selectedId) {
-    return;
-  }
+function closeCompactTodoDropdown() {
+  compactTodoDropdown.classList.remove("open");
+  compactTodoToggle.classList.remove("open");
+}
 
-  const todo = state.todos.find((item) => item.id === selectedId);
-  if (!todo) {
-    return;
+compactTodoToggle.addEventListener("click", () => {
+  const isOpen = compactTodoDropdown.classList.contains("open");
+  if (isOpen) {
+    closeCompactTodoDropdown();
+  } else {
+    compactTodoDropdown.classList.add("open");
+    compactTodoToggle.classList.add("open");
   }
+});
 
-  const textarea = $("compact-mark-input");
-  const prefix = textarea.value.trim().length > 0 ? "\n" : "";
-  textarea.value += `${prefix}- ${todo.title}`;
-  state.compactInsertedTodoIds.add(todo.id);
-  compactTodoSelect.value = "";
-  showToast("已填入待办");
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".compact-combobox")) {
+    closeCompactTodoDropdown();
+  }
 });
 
 $("compact-mark-submit").addEventListener("click", async () => {

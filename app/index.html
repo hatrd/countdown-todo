@@ -20,10 +20,11 @@
     <section id="compact-bar" class="compact-bar" aria-label="便签快捷栏">
       <div id="compact-remaining" class="compact-countdown">选择倒计时</div>
       <div class="compact-row compact-mark-row">
-        <select id="compact-todo-select">
-          <option value="">从 todo list 选择填入...</option>
-        </select>
-        <textarea id="compact-mark-input" rows="3" placeholder="这段时间做了什么..."></textarea>
+        <div class="compact-combobox">
+          <textarea id="compact-mark-input" rows="3" placeholder="这段时间做了什么..."></textarea>
+          <button id="compact-todo-toggle" class="compact-combobox-toggle" type="button">▾</button>
+          <ul id="compact-todo-dropdown" class="compact-combobox-dropdown"></ul>
+        </div>
         <button id="compact-mark-submit" class="btn-primary">打卡</button>
       </div>
     </section>

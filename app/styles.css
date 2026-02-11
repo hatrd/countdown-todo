@@ -518,11 +518,98 @@ body.compact-mode #compact-precision-toggle {
 }
 
 .compact-mark-row {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
 }
 
-#compact-todo-select {
-  max-width: 160px;
+/* ─── Compact combobox (textarea + todo dropdown) ─── */
+.compact-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.compact-combobox textarea {
+  width: 100%;
+  padding-right: 30px;
+}
+
+.compact-combobox-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.compact-combobox-toggle:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.compact-combobox-toggle.open {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.compact-combobox-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 4px;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.compact-combobox-dropdown.open {
+  display: block;
+}
+
+.compact-combobox-dropdown li {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  transition: background 0.1s ease;
+}
+
+.compact-combobox-dropdown li:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.compact-combobox-dropdown .combobox-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+  cursor: default;
+}
+
+.compact-combobox-dropdown .combobox-empty:hover {
+  background: transparent;
+  color: var(--text-secondary);
 }
 
 .pill {
