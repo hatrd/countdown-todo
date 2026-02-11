@@ -44,6 +44,6 @@ jobs:
         with:
           name: countdown-todo-windows-bundle
           path: |
-            src-tauri/target/**/bundle/nsis/*.exe
-            src-tauri/target/**/bundle/msi/*.msi
+            target/**/bundle/nsis/*.exe
+            target/**/bundle/msi/*.msi
           if-no-files-found: warn
