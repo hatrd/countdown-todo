@@ -37,6 +37,11 @@ COUNTDOWN_TODO_DATA_DIR=/path/to/data cargo run -p src-tauri --features desktop 
 - 便签模式：顶部快捷栏，支持快速 Mark / 快速 Todo / 一键插入进行中 Todo
 - Windows 下桌面应用默认隐藏终端窗口，仅显示图形界面
 
+## CI 产物
+- 每次 GitHub Actions `windows-build` 都会上传可下载的便携版 `exe`：`countdown-todo-portable-exe`
+- 同时保留安装器工件：`countdown-todo-windows-bundle`（NSIS/MSI）
+- 推送 `v*` 标签（例如 `v0.1.1`）时，CI 会自动把便携版发布到 GitHub Release 附件
+
 ## 数据文件
 启动后会在数据目录生成：
 - `timers.csv`

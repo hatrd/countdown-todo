@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -39,7 +40,7 @@ jobs:
       - name: Build Tauri app (Windows)
         run: cargo tauri build --features desktop --target x86_64-pc-windows-msvc
 
-      - name: Upload Windows artifacts
+      - name: Upload Windows installer artifacts
         uses: actions/upload-artifact@v4
         with:
           name: countdown-todo-windows-bundle
@@ -47,3 +48,33 @@ jobs:
             target/**/bundle/nsis/*.exe
             target/**/bundle/msi/*.msi
           if-no-files-found: warn
+
+      - name: Upload portable EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: countdown-todo-portable-exe
+          path: target/x86_64-pc-windows-msvc/release/src-tauri.exe
+          if-no-files-found: error
+
+  release-portable-exe:
+    name: Release Portable EXE
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: windows-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download portable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: countdown-todo-portable-exe
+          path: dist
+
+      - name: Rename executable
+        run: mv dist/src-tauri.exe dist/countdown-todo-portable.exe
+
+      - name: Publish GitHub release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/countdown-todo-portable.exe
+          generate_release_notes: true
