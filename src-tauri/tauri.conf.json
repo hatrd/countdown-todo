@@ -8,7 +8,8 @@
     "beforeBuildCommand": "",
     "beforeDevCommand": "",
     "devPath": "../app",
-    "distDir": "../app"
+    "distDir": "../app",
+    "withGlobalTauri": true
   },
   "tauri": {
     "allowlist": {

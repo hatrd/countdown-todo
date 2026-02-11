@@ -50,6 +50,9 @@ function tauriInvoke(command, payload = {}) {
   if (tauri?.invoke) {
     return tauri.invoke(command, payload);
   }
+  if (tauri?.tauri?.invoke) {
+    return tauri.tauri.invoke(command, payload);
+  }
   if (tauri?.core?.invoke) {
     return tauri.core.invoke(command, payload);
   }
