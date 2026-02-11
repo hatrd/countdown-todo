@@ -1,6 +1,6 @@
 # T03 - Rust 服务层与 Tauri Commands
 
-- 状态：IN_PROGRESS
+- 状态：DONE
 - 负责人：Agent A
 - 依赖：T01, T02
 
@@ -22,6 +22,6 @@
 4. 命令返回结构化错误。
 
 ## 子任务
-- [ ] 设计 command payload/response
-- [ ] 设计 service/repo 分层
-- [ ] 定义错误码与错误映射
+- [x] 设计 command payload/response
+- [x] 设计 service/repo 分层
+- [x] 定义错误码与错误映射

@@ -11,3 +11,9 @@
 
 ## 下一步
 - 产出命令接口签名草案与错误码草案。
+
+
+## 第二轮输出（Phase 3）
+1. 已完成 command 契约层（统一 Envelope 返回）。
+2. 已完成错误码映射（E_VALIDATION/E_NOT_FOUND/E_CONFLICT/E_IO/E_CSV_PARSE/E_INTERNAL）。
+3. 已补充 command 层测试并通过门禁。
