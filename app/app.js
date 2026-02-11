@@ -1,3 +1,9 @@
+import {
+  createTauriInvoke,
+  formatErrorMessage,
+  invokeEnvelopeWith,
+} from "./src/invoke-bridge.mjs";
+
 const state = {
   timers: [],
   selectedTimerId: null,
@@ -56,19 +62,8 @@ function selectedTimer() {
   return state.timers.find((timer) => timer.id === state.selectedTimerId) || null;
 }
 
-function tauriInvoke(command, payload = {}) {
-  const tauri = window.__TAURI__;
-  if (tauri?.invoke) {
-    return tauri.invoke(command, payload);
-  }
-  if (tauri?.tauri?.invoke) {
-    return tauri.tauri.invoke(command, payload);
-  }
-  if (tauri?.core?.invoke) {
-    return tauri.core.invoke(command, payload);
-  }
-  return Promise.reject(new Error("Tauri invoke 不可用，请在桌面应用内运行。"));
-}
+const tauriInvoke = createTauriInvoke(() => window.__TAURI__);
+
 
 function tauriWindowApi() {
   const tauri = window.__TAURI__;
@@ -117,13 +112,10 @@ function setCompactMode(enabled, persist = true) {
 
 async function invokeEnvelope(command, payload = {}) {
   try {
-    const response = await tauriInvoke(command, payload);
-    if (!response.ok) {
-      throw new Error(response?.error?.message || "命令执行失败");
-    }
-    return response.data;
+    return await invokeEnvelopeWith(tauriInvoke, command, payload);
   } catch (error) {
-    setStatus(`错误: ${error.message}`);
+    const message = formatErrorMessage(error);
+    setStatus(`错误: ${message}`);
     throw error;
   }
 }
@@ -405,17 +397,21 @@ $("timer-form").addEventListener("submit", async (event) => {
     return;
   }
 
-  await invokeEnvelope("timer_create", {
-    name,
-    target_at_minute: targetMinute,
-    now_minute: nowMinute(),
-  });
+  try {
+    await invokeEnvelope("timer_create", {
+      name,
+      target_at_minute: targetMinute,
+      now_minute: nowMinute(),
+    });
 
-  $("timer-form").reset();
-  await refreshTimers();
-  await refreshMarksAndTodos();
-  renderAll();
-  setStatus("Timer 已创建");
+    $("timer-form").reset();
+    await refreshTimers();
+    await refreshMarksAndTodos();
+    renderAll();
+    setStatus("Timer 已创建");
+  } catch (_error) {
+    // already handled in invokeEnvelope
+  }
 });
 
 $("todo-form").addEventListener("submit", async (event) => {

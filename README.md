@@ -12,17 +12,22 @@
 - `task/`：任务拆分与执行记录
 
 ## 本地开发
-### 1) 核心逻辑测试（不依赖 GUI）
+### 1) 前后端调用契约测试（前端 invoke 兼容层）
+```bash
+node --test app/src/invoke-bridge.test.mjs
+```
+
+### 2) 核心逻辑测试（不依赖 GUI）
 ```bash
 cargo test --workspace
 ```
 
-### 2) 启动 Tauri 桌面应用
+### 3) 启动 Tauri 桌面应用
 ```bash
 cargo run -p src-tauri --features desktop --bin src-tauri
 ```
 
-### 3) 指定数据目录（可选）
+### 4) 指定数据目录（可选）
 ```bash
 COUNTDOWN_TODO_DATA_DIR=/path/to/data cargo run -p src-tauri --features desktop --bin src-tauri
 ```
