@@ -52,12 +52,19 @@ jobs:
       - name: Collect portable EXE
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Path target -Recurse -Filter src-tauri.exe |
-            Where-Object { $_.FullName -match "[\\/]release[\\/]src-tauri\.exe$" } |
+          $exe = Get-ChildItem -Path target -Recurse -File -Filter *.exe |
+            Where-Object {
+              $_.FullName -match '[\\/]release[\\/][^\\/]+\.exe$' -and
+              $_.FullName -notmatch '[\\/]bundle[\\/]' -and
+              $_.Name -notmatch '(?i)(setup|uninstall|msi|nsis)'
+            } |
+            Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
 
           if (-not $exe) {
-            Write-Error "Portable EXE not found under target/**/release/src-tauri.exe"
+            Write-Host 'Candidate EXEs under target:'
+            Get-ChildItem -Path target -Recurse -File -Filter *.exe | Select-Object -ExpandProperty FullName
+            Write-Error 'Portable EXE not found under target/**/release/*.exe'
             exit 1
           }
 
