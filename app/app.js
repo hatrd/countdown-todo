@@ -18,7 +18,6 @@ const COMPACT_MODE_KEY = "countdown_todo_compact_mode";
 
 const $ = (id) => document.getElementById(id);
 
-const statusNode = $("status");
 const timerListNode = $("timer-list");
 const selectedTimerNode = $("selected-timer");
 const markListNode = $("mark-list");
@@ -26,9 +25,15 @@ const todoListNode = $("todo-list");
 const compactTimerSelect = $("compact-timer-select");
 const compactRemaining = $("compact-remaining");
 const toggleCompactButton = $("toggle-compact");
+const toastNode = $("toast");
 
-function setStatus(message) {
-  statusNode.textContent = message;
+let toastTimer = null;
+
+function showToast(message) {
+  toastNode.textContent = message;
+  toastNode.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastNode.classList.remove("show"), 2200);
 }
 
 function nowMinute() {
@@ -42,6 +47,69 @@ function formatMinute(minute) {
   return new Date(minute * 60000).toLocaleString();
 }
 
+function formatTime(minute) {
+  if (minute === null || minute === undefined || Number.isNaN(minute)) {
+    return "-";
+  }
+  const d = new Date(minute * 60000);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatDate(minute) {
+  if (minute === null || minute === undefined || Number.isNaN(minute)) {
+    return "";
+  }
+  const d = new Date(minute * 60000);
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${m}/${day}`;
+}
+
+function formatDuration(totalMinutes) {
+  const abs = Math.abs(totalMinutes);
+  if (abs < 60) {
+    return `${abs}分钟`;
+  }
+  const hours = Math.floor(abs / 60);
+  const minutes = abs % 60;
+  if (minutes === 0) {
+    return `${hours}小时`;
+  }
+  return `${hours}小时${minutes}分`;
+}
+
+function formatCountdown(totalMinutes) {
+  const abs = Math.abs(totalMinutes);
+  if (abs >= 1440) {
+    const days = Math.floor(abs / 1440);
+    const hours = Math.floor((abs % 1440) / 60);
+    return `${days}天${hours > 0 ? hours + "时" : ""}`;
+  }
+  if (abs >= 60) {
+    const hours = Math.floor(abs / 60);
+    const minutes = abs % 60;
+    return `${hours}:${String(minutes).padStart(2, "0")}`;
+  }
+  return `${abs}分`;
+}
+
+function urgencyClass(remaining) {
+  if (remaining < 0) return "urgency-overdue";
+  if (remaining <= 10) return "urgency-danger";
+  if (remaining <= 30) return "urgency-warning";
+  if (remaining <= 120) return "urgency-normal";
+  return "urgency-relaxed";
+}
+
+function remainingLabel(remaining) {
+  if (remaining < 0) {
+    return `超时 ${formatCountdown(remaining)}`;
+  }
+  return formatCountdown(remaining);
+}
+
 function parseDateMinute(dateString) {
   const timestamp = new Date(dateString).getTime();
   if (Number.isNaN(timestamp)) {
@@ -50,20 +118,11 @@ function parseDateMinute(dateString) {
   return Math.floor(timestamp / 60000);
 }
 
-function remainingText(timer) {
-  const remaining = timer.target_at_minute - nowMinute();
-  if (remaining >= 0) {
-    return `剩余 ${remaining} 分钟`;
-  }
-  return `已超时 ${Math.abs(remaining)} 分钟`;
-}
-
 function selectedTimer() {
   return state.timers.find((timer) => timer.id === state.selectedTimerId) || null;
 }
 
 const tauriInvoke = createTauriInvoke(() => window.__TAURI__);
-
 
 function tauriWindowApi() {
   const tauri = window.__TAURI__;
@@ -115,14 +174,14 @@ async function invokeEnvelope(command, payload = {}) {
     return await invokeEnvelopeWith(tauriInvoke, command, payload);
   } catch (error) {
     const message = formatErrorMessage(error);
-    setStatus(`错误: ${message}`);
+    showToast(message);
     throw error;
   }
 }
 
 async function createMark(description, todoIds = []) {
   if (!state.selectedTimerId) {
-    setStatus("请先选择 Timer");
+    showToast("请先选择一个倒计时");
     return;
   }
 
@@ -136,12 +195,12 @@ async function createMark(description, todoIds = []) {
 
 async function createTodo(title) {
   if (!state.selectedTimerId) {
-    setStatus("请先选择 Timer");
+    showToast("请先选择一个倒计时");
     return;
   }
 
   if (!title.trim()) {
-    setStatus("Todo 内容不能为空");
+    showToast("请输入待办内容");
     return;
   }
 
@@ -155,7 +214,7 @@ async function createTodo(title) {
 function insertOpenTodosToDescription(textarea, todoIdSet) {
   const openTodos = state.todos.filter((todo) => todo.status !== "done");
   if (openTodos.length === 0) {
-    setStatus("没有进行中的 Todo 可插入");
+    showToast("暂无进行中的待办");
     return;
   }
 
@@ -167,32 +226,23 @@ function insertOpenTodosToDescription(textarea, todoIdSet) {
     todoIdSet.add(todo.id);
   }
 
-  setStatus(`已插入 ${openTodos.length} 条进行中 Todo`);
+  showToast(`已插入 ${openTodos.length} 条待办`);
 }
 
 function renderTimers() {
   timerListNode.innerHTML = "";
 
   for (const timer of state.timers) {
+    const remaining = timer.target_at_minute - nowMinute();
+    const urgency = urgencyClass(remaining);
+    const isActive = timer.id === state.selectedTimerId;
+
     const li = document.createElement("li");
-    li.className = `timer-card ${timer.id === state.selectedTimerId ? "active" : ""}`;
+    li.className = `timer-card ${urgency} ${isActive ? "active" : ""}`;
 
-    const title = document.createElement("strong");
-    title.textContent = timer.name;
-
-    const meta = document.createElement("div");
-    meta.className = "timer-meta";
-    meta.innerHTML = `
-      <span>${remainingText(timer)}</span>
-      <span>截止: ${formatMinute(timer.target_at_minute)}</span>
-    `;
-
-    const actions = document.createElement("div");
-    actions.className = "timer-actions";
-
-    const selectButton = document.createElement("button");
-    selectButton.textContent = "选择";
-    selectButton.onclick = async () => {
+    // Click the card to select
+    li.onclick = async (e) => {
+      if (e.target.tagName === "BUTTON") return;
       state.selectedTimerId = timer.id;
       state.insertedTodoIds.clear();
       state.compactInsertedTodoIds.clear();
@@ -200,23 +250,46 @@ function renderTimers() {
       renderAll();
     };
 
+    const nameEl = document.createElement("div");
+    nameEl.className = "timer-name";
+    nameEl.textContent = timer.name;
+
+    const countdownEl = document.createElement("div");
+    countdownEl.className = "timer-countdown";
+    countdownEl.textContent = remainingLabel(remaining);
+
+    const deadlineEl = document.createElement("div");
+    deadlineEl.className = "timer-deadline";
+    deadlineEl.textContent = `${formatDate(timer.target_at_minute)} ${formatTime(timer.target_at_minute)}`;
+
+    // Progress bar
+    const progressEl = document.createElement("div");
+    progressEl.className = "timer-progress";
+    const progressFill = document.createElement("div");
+    progressFill.className = "timer-progress-fill";
+    const totalSpan = timer.target_at_minute - timer.created_at_minute;
+    const elapsed = nowMinute() - timer.created_at_minute;
+    const pct = totalSpan > 0 ? Math.min(100, Math.max(0, (elapsed / totalSpan) * 100)) : 100;
+    progressFill.style.width = `${pct}%`;
+    progressEl.append(progressFill);
+
+    const actions = document.createElement("div");
+    actions.className = "timer-actions";
+
     const editButton = document.createElement("button");
+    editButton.className = "btn-ghost btn-sm";
     editButton.textContent = "编辑";
     editButton.onclick = async () => {
-      const nextName = prompt("新名称", timer.name);
-      if (!nextName) {
-        return;
-      }
+      const nextName = prompt("名称", timer.name);
+      if (!nextName) return;
       const nextTarget = prompt(
-        "新的截止时间（格式：2026-02-22T18:30）",
+        "截止时间（格式：2026-02-22T18:30）",
         new Date(timer.target_at_minute * 60000).toISOString().slice(0, 16),
       );
-      if (!nextTarget) {
-        return;
-      }
+      if (!nextTarget) return;
       const nextMinute = parseDateMinute(nextTarget);
       if (nextMinute === null) {
-        setStatus("截止时间格式无效");
+        showToast("时间格式无效");
         return;
       }
       await invokeEnvelope("timer_update", {
@@ -230,6 +303,7 @@ function renderTimers() {
     };
 
     const archiveButton = document.createElement("button");
+    archiveButton.className = "btn-ghost btn-sm";
     archiveButton.textContent = "归档";
     archiveButton.onclick = async () => {
       await invokeEnvelope("timer_archive", {
@@ -247,8 +321,8 @@ function renderTimers() {
       renderAll();
     };
 
-    actions.append(selectButton, editButton, archiveButton);
-    li.append(title, meta, actions);
+    actions.append(editButton, archiveButton);
+    li.append(nameEl, countdownEl, deadlineEl, progressEl, actions);
     timerListNode.append(li);
   }
 }
@@ -257,23 +331,54 @@ function renderMarks() {
   markListNode.innerHTML = "";
 
   if (!state.selectedTimerId) {
-    selectedTimerNode.textContent = "请选择一个 Timer";
+    selectedTimerNode.textContent = "选择一个倒计时开始";
+    selectedTimerNode.className = "current-timer-badge";
     return;
   }
 
   const timer = selectedTimer();
-  selectedTimerNode.textContent = timer
-    ? `当前 Timer: ${timer.name}（${remainingText(timer)}）`
-    : "当前 Timer 不存在";
+  if (timer) {
+    const remaining = timer.target_at_minute - nowMinute();
+    selectedTimerNode.textContent = `${timer.name} — ${remainingLabel(remaining)}`;
+    selectedTimerNode.className = `current-timer-badge`;
+  } else {
+    selectedTimerNode.textContent = "倒计时不存在";
+    selectedTimerNode.className = "current-timer-badge";
+  }
 
   for (const mark of [...state.marks].sort((a, b) => b.marked_at_minute - a.marked_at_minute)) {
     const li = document.createElement("li");
-    const todoLinks = mark.todo_ids.length ? ` | todo: ${mark.todo_ids.join(", ")}` : "";
-    li.innerHTML = `
-      <strong>${formatMinute(mark.marked_at_minute)}</strong>
-      <span>上次: ${formatMinute(mark.prev_marked_at_minute)} | 间隔: ${mark.duration_minutes ?? "-"} 分钟${todoLinks}</span>
-      <span>${mark.description || "(空描述)"}</span>
-    `;
+    li.className = "mark-card";
+
+    const timeRow = document.createElement("div");
+    timeRow.className = "mark-time";
+
+    const timeText = document.createElement("span");
+    timeText.textContent = `${formatDate(mark.marked_at_minute)} ${formatTime(mark.marked_at_minute)}`;
+
+    timeRow.append(timeText);
+
+    if (mark.duration_minutes != null) {
+      const dur = document.createElement("span");
+      dur.className = "mark-duration";
+      dur.textContent = formatDuration(mark.duration_minutes);
+      timeRow.append(dur);
+    }
+
+    li.append(timeRow);
+
+    if (mark.description) {
+      const desc = document.createElement("div");
+      desc.className = "mark-desc";
+      desc.textContent = mark.description;
+      li.append(desc);
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "mark-empty";
+      empty.textContent = "无记录";
+      li.append(empty);
+    }
+
     markListNode.append(li);
   }
 }
@@ -283,41 +388,51 @@ function renderTodos() {
 
   for (const todo of state.todos) {
     const li = document.createElement("li");
-    const title = document.createElement("span");
-    title.textContent = todo.title;
+    const isDone = todo.status === "done";
 
-    const meta = document.createElement("span");
-    meta.textContent = `${todo.status === "done" ? "已完成" : "进行中"} | 创建: ${formatMinute(
-      todo.created_at_minute,
-    )}`;
+    const card = document.createElement("div");
+    card.className = `todo-card ${isDone ? "todo-done" : ""}`;
 
-    const actions = document.createElement("div");
-    actions.className = "todo-actions";
-
-    const toggle = document.createElement("button");
-    toggle.textContent = todo.status === "done" ? "标记未完成" : "标记完成";
-    toggle.onclick = async () => {
+    const checkbox = document.createElement("button");
+    checkbox.className = "todo-checkbox";
+    checkbox.title = isDone ? "标记未完成" : "标记完成";
+    checkbox.onclick = async () => {
       await invokeEnvelope("todo_update_status", {
         todo_id: todo.id,
-        status: todo.status === "done" ? "open" : "done",
+        status: isDone ? "open" : "done",
         now_minute: nowMinute(),
       });
       await refreshMarksAndTodos();
       renderAll();
     };
 
-    const insert = document.createElement("button");
-    insert.textContent = "插入 Mark";
-    insert.onclick = () => {
-      const textarea = $("mark-description");
-      const prefix = textarea.value.trim().length > 0 ? "\n" : "";
-      textarea.value += `${prefix}- ${todo.title}`;
-      state.insertedTodoIds.add(todo.id);
-      setStatus(`已插入 todo: ${todo.title}`);
-    };
+    const content = document.createElement("div");
+    content.className = "todo-content";
 
-    actions.append(toggle, insert);
-    li.append(title, meta, actions);
+    const title = document.createElement("div");
+    title.className = "todo-title";
+    title.textContent = todo.title;
+
+    const actions = document.createElement("div");
+    actions.className = "todo-actions";
+
+    if (!isDone) {
+      const insert = document.createElement("button");
+      insert.className = "btn-ghost btn-sm";
+      insert.textContent = "插入打卡";
+      insert.onclick = () => {
+        const textarea = $("mark-description");
+        const prefix = textarea.value.trim().length > 0 ? "\n" : "";
+        textarea.value += `${prefix}- ${todo.title}`;
+        state.insertedTodoIds.add(todo.id);
+        showToast("已插入");
+      };
+      actions.append(insert);
+    }
+
+    content.append(title, actions);
+    card.append(checkbox, content);
+    li.append(card);
     todoListNode.append(li);
   }
 }
@@ -328,11 +443,12 @@ function renderCompactBar() {
 
   if (state.timers.length === 0) {
     const option = document.createElement("option");
-    option.textContent = "暂无 Timer";
+    option.textContent = "暂无倒计时";
     option.value = "";
     compactTimerSelect.append(option);
     compactTimerSelect.disabled = true;
-    compactRemaining.textContent = "请先创建 Timer";
+    compactRemaining.textContent = "创建一个倒计时开始";
+    compactRemaining.className = "pill";
     return;
   }
 
@@ -347,7 +463,14 @@ function renderCompactBar() {
     compactTimerSelect.append(option);
   }
 
-  compactRemaining.textContent = timer ? remainingText(timer) : "请选择 Timer";
+  if (timer) {
+    const remaining = timer.target_at_minute - nowMinute();
+    compactRemaining.textContent = remainingLabel(remaining);
+    compactRemaining.className = remaining < 0 ? "pill pill-overdue" : "pill";
+  } else {
+    compactRemaining.textContent = "选择倒计时";
+    compactRemaining.className = "pill";
+  }
 }
 
 function renderAll() {
@@ -393,7 +516,7 @@ $("timer-form").addEventListener("submit", async (event) => {
   const targetInput = $("timer-target").value;
   const targetMinute = parseDateMinute(targetInput);
   if (!name || targetMinute === null) {
-    setStatus("请输入合法的 timer 名称和截止时间");
+    showToast("请输入名称和截止时间");
     return;
   }
 
@@ -408,7 +531,7 @@ $("timer-form").addEventListener("submit", async (event) => {
     await refreshTimers();
     await refreshMarksAndTodos();
     renderAll();
-    setStatus("Timer 已创建");
+    showToast("已创建");
   } catch (_error) {
     // already handled in invokeEnvelope
   }
@@ -421,7 +544,6 @@ $("todo-form").addEventListener("submit", async (event) => {
   $("todo-form").reset();
   await refreshMarksAndTodos();
   renderAll();
-  setStatus("Todo 已创建");
 });
 
 $("mark-submit").addEventListener("click", async () => {
@@ -431,7 +553,7 @@ $("mark-submit").addEventListener("click", async () => {
   state.insertedTodoIds.clear();
   await refreshMarksAndTodos();
   renderAll();
-  setStatus("Mark 已保存");
+  showToast("已打卡");
 });
 
 $("compact-insert-open-todos").addEventListener("click", () => {
@@ -446,7 +568,7 @@ $("compact-mark-submit").addEventListener("click", async () => {
   state.compactInsertedTodoIds.clear();
   await refreshMarksAndTodos();
   renderAll();
-  setStatus("便签 Mark 已保存");
+  showToast("已打卡");
 });
 
 $("compact-todo-submit").addEventListener("click", async () => {
@@ -456,7 +578,6 @@ $("compact-todo-submit").addEventListener("click", async () => {
   input.value = "";
   await refreshMarksAndTodos();
   renderAll();
-  setStatus("便签 Todo 已创建");
 });
 
 compactTimerSelect.addEventListener("change", async (event) => {
@@ -492,9 +613,7 @@ setInterval(() => {
 
     const compactModeEnabled = localStorage.getItem(COMPACT_MODE_KEY) === "1";
     setCompactMode(compactModeEnabled, false);
-
-    setStatus("已连接到 Tauri 后端");
   } catch (_error) {
-    setStatus("启动失败：请在 Tauri 桌面环境运行");
+    // silent init failure
   }
 })();
