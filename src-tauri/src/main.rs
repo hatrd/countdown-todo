@@ -1,3 +1,5 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 #[cfg(feature = "desktop")]
 mod desktop;
 

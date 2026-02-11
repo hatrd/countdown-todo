@@ -4,7 +4,11 @@ const state = {
   marks: [],
   todos: [],
   insertedTodoIds: new Set(),
+  compactInsertedTodoIds: new Set(),
+  compactMode: false,
 };
+
+const COMPACT_MODE_KEY = "countdown_todo_compact_mode";
 
 const $ = (id) => document.getElementById(id);
 
@@ -13,6 +17,9 @@ const timerListNode = $("timer-list");
 const selectedTimerNode = $("selected-timer");
 const markListNode = $("mark-list");
 const todoListNode = $("todo-list");
+const compactTimerSelect = $("compact-timer-select");
+const compactRemaining = $("compact-remaining");
+const toggleCompactButton = $("toggle-compact");
 
 function setStatus(message) {
   statusNode.textContent = message;
@@ -45,6 +52,10 @@ function remainingText(timer) {
   return `已超时 ${Math.abs(remaining)} 分钟`;
 }
 
+function selectedTimer() {
+  return state.timers.find((timer) => timer.id === state.selectedTimerId) || null;
+}
+
 function tauriInvoke(command, payload = {}) {
   const tauri = window.__TAURI__;
   if (tauri?.invoke) {
@@ -59,6 +70,51 @@ function tauriInvoke(command, payload = {}) {
   return Promise.reject(new Error("Tauri invoke 不可用，请在桌面应用内运行。"));
 }
 
+function tauriWindowApi() {
+  const tauri = window.__TAURI__;
+  if (!tauri) {
+    return null;
+  }
+  return {
+    appWindow: tauri.window?.appWindow || tauri.webviewWindow?.getCurrent?.(),
+    LogicalSize: tauri.window?.LogicalSize || tauri.webviewWindow?.LogicalSize,
+  };
+}
+
+async function applyCompactWindowStyle(compactMode) {
+  const api = tauriWindowApi();
+  if (!api?.appWindow || !api?.LogicalSize) {
+    return;
+  }
+
+  try {
+    if (compactMode) {
+      await api.appWindow.setSize(new api.LogicalSize(470, 360));
+      if (api.appWindow.setAlwaysOnTop) {
+        await api.appWindow.setAlwaysOnTop(true);
+      }
+    } else {
+      await api.appWindow.setSize(new api.LogicalSize(1320, 860));
+      if (api.appWindow.setAlwaysOnTop) {
+        await api.appWindow.setAlwaysOnTop(false);
+      }
+    }
+  } catch (_error) {
+    // ignore window resize failures across runtime variants
+  }
+}
+
+function setCompactMode(enabled, persist = true) {
+  state.compactMode = enabled;
+  document.body.classList.toggle("compact-mode", enabled);
+  toggleCompactButton.textContent = enabled ? "退出便签" : "便签模式";
+  if (persist) {
+    localStorage.setItem(COMPACT_MODE_KEY, enabled ? "1" : "0");
+  }
+  void applyCompactWindowStyle(enabled);
+  renderCompactBar();
+}
+
 async function invokeEnvelope(command, payload = {}) {
   try {
     const response = await tauriInvoke(command, payload);
@@ -70,6 +126,56 @@ async function invokeEnvelope(command, payload = {}) {
     setStatus(`错误: ${error.message}`);
     throw error;
   }
+}
+
+async function createMark(description, todoIds = []) {
+  if (!state.selectedTimerId) {
+    setStatus("请先选择 Timer");
+    return;
+  }
+
+  await invokeEnvelope("mark_create", {
+    timer_id: state.selectedTimerId,
+    marked_at_minute: nowMinute(),
+    description,
+    todo_ids: todoIds,
+  });
+}
+
+async function createTodo(title) {
+  if (!state.selectedTimerId) {
+    setStatus("请先选择 Timer");
+    return;
+  }
+
+  if (!title.trim()) {
+    setStatus("Todo 内容不能为空");
+    return;
+  }
+
+  await invokeEnvelope("todo_create", {
+    timer_id: state.selectedTimerId,
+    title,
+    now_minute: nowMinute(),
+  });
+}
+
+function insertOpenTodosToDescription(textarea, todoIdSet) {
+  const openTodos = state.todos.filter((todo) => todo.status !== "done");
+  if (openTodos.length === 0) {
+    setStatus("没有进行中的 Todo 可插入");
+    return;
+  }
+
+  const prefix = textarea.value.trim().length > 0 ? "\n" : "";
+  const lines = openTodos.map((todo) => `- ${todo.title}`).join("\n");
+  textarea.value += `${prefix}${lines}`;
+
+  for (const todo of openTodos) {
+    todoIdSet.add(todo.id);
+  }
+
+  setStatus(`已插入 ${openTodos.length} 条进行中 Todo`);
 }
 
 function renderTimers() {
@@ -97,6 +203,7 @@ function renderTimers() {
     selectButton.onclick = async () => {
       state.selectedTimerId = timer.id;
       state.insertedTodoIds.clear();
+      state.compactInsertedTodoIds.clear();
       await refreshMarksAndTodos();
       renderAll();
     };
@@ -141,6 +248,8 @@ function renderTimers() {
         state.selectedTimerId = null;
         state.marks = [];
         state.todos = [];
+        state.insertedTodoIds.clear();
+        state.compactInsertedTodoIds.clear();
       }
       await refreshTimers();
       renderAll();
@@ -160,7 +269,7 @@ function renderMarks() {
     return;
   }
 
-  const timer = state.timers.find((item) => item.id === state.selectedTimerId);
+  const timer = selectedTimer();
   selectedTimerNode.textContent = timer
     ? `当前 Timer: ${timer.name}（${remainingText(timer)}）`
     : "当前 Timer 不存在";
@@ -221,10 +330,39 @@ function renderTodos() {
   }
 }
 
+function renderCompactBar() {
+  const timer = selectedTimer();
+  compactTimerSelect.innerHTML = "";
+
+  if (state.timers.length === 0) {
+    const option = document.createElement("option");
+    option.textContent = "暂无 Timer";
+    option.value = "";
+    compactTimerSelect.append(option);
+    compactTimerSelect.disabled = true;
+    compactRemaining.textContent = "请先创建 Timer";
+    return;
+  }
+
+  compactTimerSelect.disabled = false;
+  for (const timerItem of state.timers) {
+    const option = document.createElement("option");
+    option.value = timerItem.id;
+    option.textContent = timerItem.name;
+    if (timerItem.id === state.selectedTimerId) {
+      option.selected = true;
+    }
+    compactTimerSelect.append(option);
+  }
+
+  compactRemaining.textContent = timer ? remainingText(timer) : "请选择 Timer";
+}
+
 function renderAll() {
   renderTimers();
   renderMarks();
   renderTodos();
+  renderCompactBar();
 }
 
 async function refreshTimers() {
@@ -234,6 +372,10 @@ async function refreshTimers() {
 
   if (state.selectedTimerId && !state.timers.some((timer) => timer.id === state.selectedTimerId)) {
     state.selectedTimerId = null;
+  }
+
+  if (!state.selectedTimerId && state.timers.length > 0) {
+    state.selectedTimerId = state.timers[0].id;
   }
 }
 
@@ -271,30 +413,15 @@ $("timer-form").addEventListener("submit", async (event) => {
 
   $("timer-form").reset();
   await refreshTimers();
+  await refreshMarksAndTodos();
   renderAll();
   setStatus("Timer 已创建");
 });
 
 $("todo-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-
-  if (!state.selectedTimerId) {
-    setStatus("请先选择 Timer");
-    return;
-  }
-
   const title = $("todo-title").value.trim();
-  if (!title) {
-    setStatus("Todo 内容不能为空");
-    return;
-  }
-
-  await invokeEnvelope("todo_create", {
-    timer_id: state.selectedTimerId,
-    title,
-    now_minute: nowMinute(),
-  });
-
+  await createTodo(title);
   $("todo-form").reset();
   await refreshMarksAndTodos();
   renderAll();
@@ -302,19 +429,8 @@ $("todo-form").addEventListener("submit", async (event) => {
 });
 
 $("mark-submit").addEventListener("click", async () => {
-  if (!state.selectedTimerId) {
-    setStatus("请先选择 Timer");
-    return;
-  }
-
   const description = $("mark-description").value;
-  await invokeEnvelope("mark_create", {
-    timer_id: state.selectedTimerId,
-    marked_at_minute: nowMinute(),
-    description,
-    todo_ids: Array.from(state.insertedTodoIds),
-  });
-
+  await createMark(description, Array.from(state.insertedTodoIds));
   $("mark-description").value = "";
   state.insertedTodoIds.clear();
   await refreshMarksAndTodos();
@@ -322,10 +438,53 @@ $("mark-submit").addEventListener("click", async () => {
   setStatus("Mark 已保存");
 });
 
+$("compact-insert-open-todos").addEventListener("click", () => {
+  const textarea = $("compact-mark-input");
+  insertOpenTodosToDescription(textarea, state.compactInsertedTodoIds);
+});
+
+$("compact-mark-submit").addEventListener("click", async () => {
+  const description = $("compact-mark-input").value;
+  await createMark(description, Array.from(state.compactInsertedTodoIds));
+  $("compact-mark-input").value = "";
+  state.compactInsertedTodoIds.clear();
+  await refreshMarksAndTodos();
+  renderAll();
+  setStatus("便签 Mark 已保存");
+});
+
+$("compact-todo-submit").addEventListener("click", async () => {
+  const input = $("compact-todo-input");
+  const title = input.value.trim();
+  await createTodo(title);
+  input.value = "";
+  await refreshMarksAndTodos();
+  renderAll();
+  setStatus("便签 Todo 已创建");
+});
+
+compactTimerSelect.addEventListener("change", async (event) => {
+  const nextId = event.target.value;
+  state.selectedTimerId = nextId || null;
+  state.insertedTodoIds.clear();
+  state.compactInsertedTodoIds.clear();
+  await refreshMarksAndTodos();
+  renderAll();
+});
+
+toggleCompactButton.addEventListener("click", () => {
+  setCompactMode(!state.compactMode);
+});
+
+$("compact-exit").addEventListener("click", () => {
+  setCompactMode(false);
+});
+
 setInterval(() => {
   if (state.timers.length > 0) {
     renderTimers();
     renderMarks();
+    renderCompactBar();
   }
 }, 1000);
 
@@ -334,6 +493,10 @@ setInterval(() => {
     await refreshTimers();
     await refreshMarksAndTodos();
     renderAll();
+
+    const compactModeEnabled = localStorage.getItem(COMPACT_MODE_KEY) === "1";
+    setCompactMode(compactModeEnabled, false);
+
     setStatus("已连接到 Tauri 后端");
   } catch (_error) {
     setStatus("启动失败：请在 Tauri 桌面环境运行");

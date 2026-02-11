@@ -32,6 +32,11 @@ COUNTDOWN_TODO_DATA_DIR=/path/to/data cargo run -p src-tauri --features desktop 
 - Debian/Ubuntu: `libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev`
 - Fedora: `gtk3-devel webkit2gtk3-devel libappindicator-gtk3-devel`
 
+## 界面模式
+- 标准模式：三栏视图（Timer / Mark / Todo）
+- 便签模式：顶部快捷栏，支持快速 Mark / 快速 Todo / 一键插入进行中 Todo
+- Windows 下桌面应用默认隐藏终端窗口，仅显示图形界面
+
 ## 数据文件
 启动后会在数据目录生成：
 - `timers.csv`

@@ -9,9 +9,31 @@
   </head>
   <body>
     <header class="app-header">
-      <h1>Countdown Todo</h1>
-      <p>跨平台倒计时 + Mark + Todo（CSV 持久化）</p>
+      <div>
+        <h1>Countdown Todo</h1>
+        <p>跨平台倒计时 + Mark + Todo（CSV 持久化）</p>
+      </div>
+      <div class="header-actions">
+        <button id="toggle-compact">便签模式</button>
+      </div>
     </header>
+
+    <section id="compact-bar" class="compact-bar" aria-label="便签快捷栏">
+      <div class="compact-row">
+        <select id="compact-timer-select"></select>
+        <span id="compact-remaining" class="pill">请选择 Timer</span>
+        <button id="compact-exit">退出便签</button>
+      </div>
+      <div class="compact-row compact-mark-row">
+        <textarea id="compact-mark-input" rows="3" placeholder="快速记录这一段做了什么..."></textarea>
+        <button id="compact-insert-open-todos">插入进行中 Todo</button>
+        <button id="compact-mark-submit">Mark</button>
+      </div>
+      <div class="compact-row">
+        <input id="compact-todo-input" placeholder="快速添加 Todo" />
+        <button id="compact-todo-submit">+ Todo</button>
+      </div>
+    </section>
 
     <main class="layout">
       <section class="panel">
