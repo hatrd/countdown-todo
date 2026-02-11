@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use parking_lot::Mutex;
 use tauri::Manager;
 
-use crate::command::{
+use countdown_todo_core::command::{
     ArchiveTimerCommand, CommandApi, CreateMarkCommand, CreateTimerCommand, CreateTodoCommand,
     Envelope, UpdateTimerCommand, UpdateTodoStatusCommand,
 };
-use crate::model::{Mark, Timer, Todo, TodoStatus};
-use crate::repository::CsvStore;
-use crate::service::AppService;
+use countdown_todo_core::model::{Mark, Timer, Todo, TodoStatus};
+use countdown_todo_core::repository::CsvStore;
+use countdown_todo_core::service::AppService;
 
 struct DesktopState {
     api: Mutex<CommandApi<CsvStore>>,
@@ -98,7 +98,7 @@ fn todo_update_status(
         return Envelope {
             ok: false,
             data: None,
-            error: Some(crate::command::CommandError {
+            error: Some(countdown_todo_core::command::CommandError {
                 code: "E_VALIDATION",
                 message: format!("unsupported todo status: {status}"),
                 detail: None,
@@ -158,7 +158,8 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let data_dir = resolve_data_dir(&app.handle());
-            let store = CsvStore::new(&data_dir).map_err(|error| error.to_string())?;
+            let store = CsvStore::new(&data_dir)
+                .map_err(|error: countdown_todo_core::AppError| error.to_string())?;
             let service = AppService::new(store);
             let api = CommandApi::new(service);
 
