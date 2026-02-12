@@ -643,6 +643,10 @@ body.compact-mode .app-header {
   padding-bottom: 2px;
 }
 
+body.compact-mode .app-header h1 {
+  display: none;
+}
+
 body.compact-mode .compact-bar {
   display: grid;
 }
