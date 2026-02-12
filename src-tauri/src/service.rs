@@ -11,13 +11,17 @@ struct IdGenerator {
 
 impl Default for IdGenerator {
     fn default() -> Self {
-        Self {
-            sequence: AtomicU64::new(1),
-        }
+        Self::new(1)
     }
 }
 
 impl IdGenerator {
+    fn new(initial_sequence: u64) -> Self {
+        Self {
+            sequence: AtomicU64::new(initial_sequence.max(1)),
+        }
+    }
+
     fn next(&self, prefix: &str) -> String {
         let number = self.sequence.fetch_add(1, Ordering::SeqCst);
         format!("{prefix}-{number}")
@@ -31,9 +35,11 @@ pub struct AppService<S: Store> {
 
 impl<S: Store> AppService<S> {
     pub fn new(store: S) -> Self {
+        let initial_sequence = Self::next_sequence_from_store(&store);
+
         Self {
             store,
-            ids: IdGenerator::default(),
+            ids: IdGenerator::new(initial_sequence),
         }
     }
 
@@ -218,6 +224,30 @@ impl<S: Store> AppService<S> {
         }
         Ok(())
     }
+
+    fn next_sequence_from_store(store: &S) -> u64 {
+        let timers = store.list_timers(true);
+        let mut max_sequence = 0;
+
+        for timer in &timers {
+            max_sequence = max_sequence.max(id_sequence_number(&timer.id).unwrap_or(0));
+
+            for todo in store.list_todos_by_timer(&timer.id) {
+                max_sequence = max_sequence.max(id_sequence_number(&todo.id).unwrap_or(0));
+            }
+
+            for mark in store.list_marks_by_timer(&timer.id) {
+                max_sequence = max_sequence.max(id_sequence_number(&mark.id).unwrap_or(0));
+            }
+        }
+
+        max_sequence.saturating_add(1).max(1)
+    }
+}
+
+fn id_sequence_number(id: &str) -> Option<u64> {
+    let (_, suffix) = id.rsplit_once('-')?;
+    suffix.parse::<u64>().ok()
 }
 
 #[cfg(test)]

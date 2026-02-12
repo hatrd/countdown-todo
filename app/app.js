@@ -100,6 +100,9 @@ function formatCountdown(totalMinutes) {
 
 const PRECISION_CYCLE = ["hour", "minute", "second"];
 const PRECISION_LABELS = { hour: "小时", minute: "分钟", second: "秒" };
+const COMPACT_DROPDOWN_GAP_PX = 4;
+const COMPACT_DROPDOWN_VIEWPORT_MARGIN_PX = 10;
+const COMPACT_DROPDOWN_MAX_HEIGHT_PX = 220;
 
 function formatCompactCountdown(targetMinute, precision) {
   if (precision === "hour") {
@@ -644,24 +647,59 @@ $("mark-submit").addEventListener("click", async () => {
 function closeCompactTodoDropdown() {
   compactTodoDropdown.classList.remove("open");
   compactTodoToggle.classList.remove("open");
+  compactTodoDropdown.style.top = "";
   compactTodoDropdown.style.bottom = "";
+  compactTodoDropdown.style.maxHeight = "";
 }
 
 function positionCompactTodoDropdown() {
   const rect = compactTodoToggle.getBoundingClientRect();
-  compactTodoDropdown.style.top = `${rect.bottom + 4}px`;
+  const viewportHeight = window.innerHeight;
+  const gap = COMPACT_DROPDOWN_GAP_PX;
+  const margin = COMPACT_DROPDOWN_VIEWPORT_MARGIN_PX;
+  const availableAbove = Math.max(0, rect.top - gap - margin);
+  const availableBelow = Math.max(0, viewportHeight - rect.bottom - gap - margin);
+  const preferredMaxHeight = Math.min(
+    COMPACT_DROPDOWN_MAX_HEIGHT_PX,
+    Math.max(availableAbove, availableBelow),
+  );
+
+  compactTodoDropdown.style.bottom = "";
+  compactTodoDropdown.style.top = `${rect.bottom + gap}px`;
   compactTodoDropdown.style.right = `${window.innerWidth - rect.right}px`;
   compactTodoDropdown.style.left = "";
   compactTodoDropdown.style.width = "";
+  compactTodoDropdown.style.maxHeight = `${preferredMaxHeight}px`;
 
-  // After showing, check if it overflows the bottom of the viewport
-  // and flip upward if needed
   requestAnimationFrame(() => {
     const dropRect = compactTodoDropdown.getBoundingClientRect();
-    if (dropRect.bottom > window.innerHeight) {
-      compactTodoDropdown.style.top = "";
-      compactTodoDropdown.style.bottom = `${window.innerHeight - rect.top + 4}px`;
-    }
+    const dropdownHeight = dropRect.height;
+    const canFitBelow = rect.bottom + gap + dropdownHeight <= viewportHeight - margin;
+    const canFitAbove = rect.top - gap - dropdownHeight >= margin;
+    const placeAbove = canFitAbove || (!canFitBelow && availableAbove > availableBelow);
+    const chosenAvailable = placeAbove ? availableAbove : availableBelow;
+    const constrainedHeight = Math.min(COMPACT_DROPDOWN_MAX_HEIGHT_PX, chosenAvailable);
+
+    compactTodoDropdown.style.maxHeight = `${Math.max(0, constrainedHeight)}px`;
+
+    requestAnimationFrame(() => {
+      const constrainedRect = compactTodoDropdown.getBoundingClientRect();
+      const constrainedHeightFinal = constrainedRect.height;
+      let top = placeAbove
+        ? rect.top - gap - constrainedHeightFinal
+        : rect.bottom + gap;
+
+      const minTop = margin;
+      const maxTop = viewportHeight - margin - constrainedHeightFinal;
+      if (maxTop >= minTop) {
+        top = Math.min(Math.max(top, minTop), maxTop);
+      } else {
+        top = minTop;
+      }
+
+      compactTodoDropdown.style.top = `${top}px`;
+      compactTodoDropdown.style.bottom = "";
+    });
   });
 }
 
@@ -672,6 +710,18 @@ compactTodoToggle.addEventListener("click", () => {
   } else {
     compactTodoDropdown.classList.add("open");
     compactTodoToggle.classList.add("open");
+    positionCompactTodoDropdown();
+  }
+});
+
+window.addEventListener("resize", () => {
+  if (compactTodoDropdown.classList.contains("open")) {
+    positionCompactTodoDropdown();
+  }
+});
+
+window.addEventListener("orientationchange", () => {
+  if (compactTodoDropdown.classList.contains("open")) {
     positionCompactTodoDropdown();
   }
 });

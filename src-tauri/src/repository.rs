@@ -766,4 +766,35 @@ mod restart {
         assert_eq!(second_mark.prev_marked_at_minute, Some(200));
         assert_eq!(second_mark.duration_minutes, Some(45));
     }
+
+    #[test]
+    fn tests_add_todo_after_restart_does_not_overwrite_existing_todo() {
+        let root = unique_temp_dir("restart-todo-overwrite");
+        let timer_id = {
+            let store = CsvStore::new(&root).expect("csv store should be created");
+            let mut service = AppService::new(store);
+            let timer = service
+                .create_timer("continuity", 500, 100)
+                .expect("timer should be created");
+            service
+                .create_todo(&timer.id, "before restart", 120)
+                .expect("first todo should be created");
+            timer.id
+        };
+
+        let store = CsvStore::new(&root).expect("csv store should reopen");
+        let mut service = AppService::new(store);
+        let second_todo = service
+            .create_todo(&timer_id, "after restart", 140)
+            .expect("second todo should be created");
+
+        let todos = service
+            .list_todos_by_timer(&timer_id)
+            .expect("todos should load");
+
+        assert_eq!(todos.len(), 2);
+        assert!(todos.iter().any(|todo| todo.title == "before restart"));
+        assert!(todos.iter().any(|todo| todo.title == "after restart"));
+        assert!(todos.iter().any(|todo| todo.id != second_todo.id));
+    }
 }
