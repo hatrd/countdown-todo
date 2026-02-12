@@ -644,6 +644,25 @@ $("mark-submit").addEventListener("click", async () => {
 function closeCompactTodoDropdown() {
   compactTodoDropdown.classList.remove("open");
   compactTodoToggle.classList.remove("open");
+  compactTodoDropdown.style.bottom = "";
+}
+
+function positionCompactTodoDropdown() {
+  const rect = compactTodoToggle.getBoundingClientRect();
+  compactTodoDropdown.style.top = `${rect.bottom + 4}px`;
+  compactTodoDropdown.style.right = `${window.innerWidth - rect.right}px`;
+  compactTodoDropdown.style.left = "";
+  compactTodoDropdown.style.width = "";
+
+  // After showing, check if it overflows the bottom of the viewport
+  // and flip upward if needed
+  requestAnimationFrame(() => {
+    const dropRect = compactTodoDropdown.getBoundingClientRect();
+    if (dropRect.bottom > window.innerHeight) {
+      compactTodoDropdown.style.top = "";
+      compactTodoDropdown.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    }
+  });
 }
 
 compactTodoToggle.addEventListener("click", () => {
@@ -653,6 +672,7 @@ compactTodoToggle.addEventListener("click", () => {
   } else {
     compactTodoDropdown.classList.add("open");
     compactTodoToggle.classList.add("open");
+    positionCompactTodoDropdown();
   }
 });
 
