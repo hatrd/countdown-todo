@@ -83,6 +83,18 @@ function formatDuration(totalMinutes) {
   return `${hours}小时${minutes}分`;
 }
 
+function markSuccessToast(mark) {
+  if (!mark) {
+    return "已打卡";
+  }
+
+  if (mark.duration_minutes == null) {
+    return "首次打卡";
+  }
+
+  return `已打卡（本次消耗时间：${formatDuration(mark.duration_minutes)}）`;
+}
+
 function formatCountdown(totalMinutes) {
   const abs = Math.abs(totalMinutes);
   if (abs >= 1440) {
@@ -242,7 +254,7 @@ async function createMark(description, todoIds = []) {
     return;
   }
 
-  await invokeEnvelope("mark_create", {
+  return invokeEnvelope("mark_create", {
     timer_id: state.selectedTimerId,
     marked_at_minute: nowMinute(),
     description,
@@ -636,12 +648,15 @@ $("todo-form").addEventListener("submit", async (event) => {
 
 $("mark-submit").addEventListener("click", async () => {
   const description = $("mark-description").value;
-  await createMark(description, Array.from(state.insertedTodoIds));
+  const mark = await createMark(description, Array.from(state.insertedTodoIds));
+  if (!mark) {
+    return;
+  }
   $("mark-description").value = "";
   state.insertedTodoIds.clear();
   await refreshMarksAndTodos();
   renderAll();
-  showToast("已打卡");
+  showToast(markSuccessToast(mark));
 });
 
 function closeCompactTodoDropdown() {
@@ -734,12 +749,15 @@ document.addEventListener("click", (event) => {
 
 $("compact-mark-submit").addEventListener("click", async () => {
   const description = $("compact-mark-input").value;
-  await createMark(description, Array.from(state.compactInsertedTodoIds));
+  const mark = await createMark(description, Array.from(state.compactInsertedTodoIds));
+  if (!mark) {
+    return;
+  }
   $("compact-mark-input").value = "";
   state.compactInsertedTodoIds.clear();
   await refreshMarksAndTodos();
   renderAll();
-  showToast("已打卡");
+  showToast(markSuccessToast(mark));
 });
 
 $("compact-precision-toggle").addEventListener("click", () => {
